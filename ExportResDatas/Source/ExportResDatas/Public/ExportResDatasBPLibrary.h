@@ -34,16 +34,16 @@ struct FStaticMeshData
 	GENERATED_USTRUCT_BODY()
 
 		//顶点数量
-		UPROPERTY(BlueprintReadOnly, Category = "StaticMesh")
+	UPROPERTY(BlueprintReadOnly, Category = "StaticMesh")
 		int32 VerticesNum;
 
 	//索引数组
 	UPROPERTY(BlueprintReadOnly, Category = "StaticMesh")
 		TArray<int32> Indices;
 
-	//文本对应
-	UPROPERTY(BlueprintReadOnly, Category = "StaticMesh")
-		FString VsFormat;
+	////文本对应
+	//UPROPERTY(BlueprintReadOnly, Category = "StaticMesh")
+	//	FString VsFormat;
 
 	UPROPERTY(BlueprintReadOnly, Category = "StaticMesh")
 		TArray<float> Vertices;
@@ -51,6 +51,59 @@ struct FStaticMeshData
 public:
 	FStaticMeshData() = default;
 	FStaticMeshData(TArray<float> Vertices, TArray<int32> Indices);
+};
+
+USTRUCT(BlueprintType)
+struct FCameraInfo
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+	UPROPERTY(BlueprintReadOnly, Category = "Camera")
+		FVector Location;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Camera")
+		FVector Target;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Camera")
+		FVector Rotator;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Camera")
+		float Fov;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Camera")
+		float Aspect;
+
+public:
+	FCameraInfo() : Location(FVector()), Target(FVector()), Rotator(FVector()), Fov(0.f), Aspect(0.f) {}
+};
+
+USTRUCT(BlueprintType)
+struct FWorldCoordinateInfo
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+	UPROPERTY(BlueprintReadOnly, Category = "World")
+		FVector Location;
+
+	UPROPERTY(BlueprintReadOnly, Category = "World")
+		FRotator Rotation;
+
+	UPROPERTY(BlueprintReadOnly, Category = "World")
+		FVector Scale;
+
+	UPROPERTY(BlueprintReadOnly, Category = "World")
+		FVector4 MatrixCol1;
+
+	UPROPERTY(BlueprintReadOnly, Category = "World")
+		FVector4 MatrixCol2;
+
+	UPROPERTY(BlueprintReadOnly, Category = "World")
+		FVector4 MatrixCol3;
+
+	UPROPERTY(BlueprintReadOnly, Category = "World")
+		FVector4 MatrixCol4;
 };
 
 //namespace RE
@@ -86,7 +139,7 @@ class UExportResDatasBPLibrary : public UBlueprintFunctionLibrary
 public:
 	//导出静态网格体数据
 	UFUNCTION(BlueprintCallable, Category = "ResExport")
-		static void ExportStaticMesh(const UStaticMesh* StaticMesh, FString OutputPath = TEXT(""), const FString& Filename = TEXT("SingleStaticMesh_"));
+		static void ExportStaticMesh(const UStaticMesh* StaticMesh, FString OutputPath = TEXT(""), const FString& Filename = TEXT("StaticMeshMessage"));
 
 	//将网格体数据以json的形式写到文件中
 	UFUNCTION(BlueprintCallable, Category = "ResExport")
@@ -100,9 +153,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ResExport")
 		static void GetStaticMeshIndicesData(const UStaticMesh* StaticMesh, TArray<int32>& Output);
 
+	//导出相机的数据
+	UFUNCTION(BlueprintCallable, Category = "ResExport", meta = (WorldContext = WorldContextObject))
+		static void ExportCamera(const UObject* WorldContextObject, const UCameraComponent* CameraComponent, FString OutputPath = TEXT(""), const FString& Filename = TEXT("CameraDataMessage"));
+
+	//导出静态网格体的平移旋转缩放等信息
+	UFUNCTION(BlueprintCallable, Category = "ResExport", meta = (WorldContext = WorldContextObject))
+		static void ExportActorWorldCoordinate(const AActor* StaticMeshActor, FString OutputPath = TEXT(""), const FString& Filename = TEXT("WorldCoordinate"));
+
+
 	//函数模板
 	template <typename TargetStruct>
-	static void ExportStructByJsonConverter(const TargetStruct& Target, FString OutputPath = TEXT(""), const FString& Filename = TEXT("SingleStaticMesh_"))
+	static void ExportStructByJsonConverter(const TargetStruct& Target, FString OutputPath, const FString& Filename )
 	{
 		FString OutputString;
 		//将自定义结构体转换为Json字符串

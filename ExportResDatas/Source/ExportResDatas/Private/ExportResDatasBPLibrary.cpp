@@ -2,6 +2,8 @@
 
 #include "ExportResDatasBPLibrary.h"
 #include "ExportResDatas.h"
+#include "Camera/CameraComponent.h"
+#include "Camera/CameraActor.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogResExporter, Log, All);
 //namespace RE
@@ -33,11 +35,11 @@ UExportResDatasBPLibrary::UExportResDatasBPLibrary(const FObjectInitializer& Obj
 
 FStaticMeshData::FStaticMeshData(TArray<float> Vertices, TArray<int32> Indices) : Indices(Indices), Vertices(Vertices)
 {
-	VsFormat =
-		TEXT("POSITION,")
-		TEXT("NORMAL,")
-		TEXT("TEXCOORD0,")
-		TEXT("TEXCOORD1");
+	//VsFormat =
+	//	TEXT("POSITION,")
+	//	TEXT("NORMAL,")
+	//	TEXT("TEXCOORD0,")
+	//	TEXT("TEXCOORD1");
 
 	VerticesNum = Vertices.Num();
 }
@@ -84,12 +86,12 @@ void UExportResDatasBPLibrary::GetStaticMeshVerticesData(const UStaticMesh* Stat
 				Vertices.Add(VertexBuffers->PositionVertexBuffer.VertexPosition(i).Y);
 				Vertices.Add(VertexBuffers->PositionVertexBuffer.VertexPosition(i).Z);
 
-				Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.VertexTangentZ(i).X);
-				Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.VertexTangentZ(i).Y);
-				Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.VertexTangentZ(i).Z);
+				//Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.VertexTangentZ(i).X);
+				//Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.VertexTangentZ(i).Y);
+				//Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.VertexTangentZ(i).Z);
 
-				Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.GetVertexUV(i, 0).X);
-				Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.GetVertexUV(i, 0).Y);
+				//Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.GetVertexUV(i, 0).X);
+				//Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.GetVertexUV(i, 0).Y);
 			}
 		}
 		else
@@ -140,6 +142,42 @@ void UExportResDatasBPLibrary::ExportStaticMesh(const UStaticMesh* StaticMesh, F
 	FStaticMeshData Data(Vertices, Indices);
 
 	ExportStructByJsonConverter(Data, Path, Filename);
+}
+
+void UExportResDatasBPLibrary::ExportCamera(const UObject* WorldContextObject, const UCameraComponent* CameraComponent, FString OutputPath, const FString& Filename)
+{
+	//UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject);
+	FCameraInfo CamData;
+
+	FTransform Trans = CameraComponent->GetComponentToWorld();
+	//相机的位置
+	CamData.Location = Trans.GetLocation();
+	//相机的旋转
+	CamData.Rotator = Trans.GetRotation().Euler();
+	//相机的前向矢量
+	CamData.Target = CamData.Location + CameraComponent->GetForwardVector();
+	//相机的视野
+	CamData.Fov = CameraComponent->FieldOfView;
+	//相机的纵横比
+	CamData.Aspect = CameraComponent->AspectRatio;
+
+	ExportStructByJsonConverter(CamData, OutputPath, Filename);
+}
+
+void UExportResDatasBPLibrary::ExportActorWorldCoordinate(const AActor* StaticMeshActor, FString OutputPath, const FString& Filename)
+{
+	FWorldCoordinateInfo WorldCoordinateInfo;
+	FTransform transform = StaticMeshActor->GetTransform();
+	WorldCoordinateInfo.Location = transform.GetLocation();
+	WorldCoordinateInfo.Rotation = transform.Rotator();
+	WorldCoordinateInfo.Scale = transform.GetScale3D();
+	FMatrix44d WorldMatrix = transform.ToMatrixWithScale();
+	WorldCoordinateInfo.MatrixCol1 = FVector4(WorldMatrix.M[0][0], WorldMatrix.M[1][0], WorldMatrix.M[2][0], WorldMatrix.M[3][0]);
+	WorldCoordinateInfo.MatrixCol2 = FVector4(WorldMatrix.M[0][1], WorldMatrix.M[1][1], WorldMatrix.M[2][1], WorldMatrix.M[3][1]);
+	WorldCoordinateInfo.MatrixCol3 = FVector4(WorldMatrix.M[0][2], WorldMatrix.M[1][2], WorldMatrix.M[2][2], WorldMatrix.M[3][2]);
+	WorldCoordinateInfo.MatrixCol4 = FVector4(WorldMatrix.M[0][3], WorldMatrix.M[1][3], WorldMatrix.M[2][3], WorldMatrix.M[3][3]);
+
+	ExportStructByJsonConverter(WorldCoordinateInfo, OutputPath, Filename);
 }
 
 
