@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Runtime/JsonUtilities/Public/JsonObjectConverter.h"
 #include "Engine.h"
+#include "Engine/World.h"
 #include "Serialization/Archive.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "ExportResDatasBPLibrary.generated.h"
@@ -28,12 +29,14 @@
 //	FVector2D TexCoord2 = FVector2D::ZeroVector;
 //};
 
+//在世界场景中的static mesh的顶点、索引信息
+//以及该静态网格体在世界场景对应的model矩阵
 USTRUCT(BlueprintType)
 struct FStaticMeshData
 {
 	GENERATED_USTRUCT_BODY()
 
-		//顶点数量
+	//顶点数量
 	UPROPERTY(BlueprintReadOnly, Category = "StaticMesh")
 		int32 VerticesNum;
 
@@ -48,9 +51,15 @@ struct FStaticMeshData
 	UPROPERTY(BlueprintReadOnly, Category = "StaticMesh")
 		TArray<float> Vertices;
 
+	UPROPERTY(BlueprintReadOnly, Category = "StaticMesh")
+		FString StaticMeshName;
+
+	UPROPERTY(BlueprintReadOnly, Category = "StaticMesh")
+		TArray<float> ModelMatrix;
+
 public:
 	FStaticMeshData() = default;
-	FStaticMeshData(TArray<float> Vertices, TArray<int32> Indices);
+	FStaticMeshData(FString nameParameter, TArray<float> &Vertices, TArray<int32> &Indices, TArray<float> &modelMatrix);
 };
 
 USTRUCT(BlueprintType)
@@ -74,62 +83,12 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Camera")
 		float Aspect;
 
+	UPROPERTY(BlueprintReadOnly, Category = "Camera")
+		FString CameraName;
+
 public:
 	FCameraInfo() : Location(FVector()), Target(FVector()), Rotator(FVector()), Fov(0.f), Aspect(0.f) {}
 };
-
-USTRUCT(BlueprintType)
-struct FWorldCoordinateInfo
-{
-	GENERATED_USTRUCT_BODY()
-
-public:
-	UPROPERTY(BlueprintReadOnly, Category = "World")
-		FVector Location;
-
-	UPROPERTY(BlueprintReadOnly, Category = "World")
-		FRotator Rotation;
-
-	UPROPERTY(BlueprintReadOnly, Category = "World")
-		FVector Scale;
-
-	UPROPERTY(BlueprintReadOnly, Category = "World")
-		FVector4 MatrixCol1;
-
-	UPROPERTY(BlueprintReadOnly, Category = "World")
-		FVector4 MatrixCol2;
-
-	UPROPERTY(BlueprintReadOnly, Category = "World")
-		FVector4 MatrixCol3;
-
-	UPROPERTY(BlueprintReadOnly, Category = "World")
-		FVector4 MatrixCol4;
-};
-
-//namespace RE
-//{
-//	//顶点
-//	struct FStaticVertex_RE
-//	{
-//		//顶点位置、法线、纹理坐标、顶点颜色
-//		FVector Position;
-//		FVector TangentZ;
-//		FVector2D UV0;
-//		FVector4 Color;
-//	};
-//
-//	struct FStaticMesh_Lod_RE
-//	{
-//		int32 VertStride;
-//		TArray<FStaticVertex_RE> Vertice;
-//		TArray<int32> Indices;
-//	};
-//}
-//
-//using namespace RE;
-/**
- *
- */
 
 UCLASS()
 class UExportResDatasBPLibrary : public UBlueprintFunctionLibrary
@@ -139,7 +98,7 @@ class UExportResDatasBPLibrary : public UBlueprintFunctionLibrary
 public:
 	//导出静态网格体数据
 	UFUNCTION(BlueprintCallable, Category = "ResExport")
-		static void ExportStaticMesh(const UStaticMesh* StaticMesh, FString OutputPath = TEXT(""), const FString& Filename = TEXT("StaticMeshMessage"));
+		static void ExportStaticMesh(const UStaticMesh* StaticMesh, TArray<float>& modelMatrixParameter, FString OutputPath = TEXT(""), const FString& Filename = TEXT("StaticMeshMessage"));
 
 	//将网格体数据以json的形式写到文件中
 	UFUNCTION(BlueprintCallable, Category = "ResExport")
@@ -155,13 +114,18 @@ public:
 
 	//导出相机的数据
 	UFUNCTION(BlueprintCallable, Category = "ResExport", meta = (WorldContext = WorldContextObject))
-		static void ExportCamera(const UObject* WorldContextObject, const UCameraComponent* CameraComponent, FString OutputPath = TEXT(""), const FString& Filename = TEXT("CameraDataMessage"));
+		static void ExportCamera(/*const UObject* WorldContextObject,*/ const UCameraComponent* CameraComponent, const FString& cameraName, FString OutputPath = TEXT(""), const FString& Filename = TEXT("SceneMessage"));
 
-	//导出静态网格体的平移旋转缩放等信息
-	UFUNCTION(BlueprintCallable, Category = "ResExport", meta = (WorldContext = WorldContextObject))
-		static void ExportActorWorldCoordinate(const AActor* StaticMeshActor, FString OutputPath = TEXT(""), const FString& Filename = TEXT("WorldCoordinate"));
+	UFUNCTION(BlueprintCallable, Category = "ResExport")
+		static void ExportAllStaticMesh(const UStaticMesh* StaticMesh, const AActor* StaticMeshActor, FString OutputPath = TEXT(""), const FString& Filename = TEXT("SceneMessage"));
 
+	UFUNCTION(BlueprintCallable, Category = "ResExport")
+		static void ExportAllCamera(const AActor* cameraActor, const UCameraComponent* CameraComponent, FString OutputPath = TEXT(""), const FString& Filename = TEXT("SceneMessage"));
 
+	//UFUNCTION(BlueprintCallable, Category = "ResExport")
+	//	static void ExportDirectionLight();
+	//UPROPERTY(VisibleAnywhere, Category = "ResExport")
+	//	FString cameraName;
 	//函数模板
 	template <typename TargetStruct>
 	static void ExportStructByJsonConverter(const TargetStruct& Target, FString OutputPath, const FString& Filename )
@@ -173,7 +137,4 @@ public:
 		//输出到指定文件中
 		WriteFile(OutputString, OutputPath, Filename);
 	}
-
-	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Execute Sample function", Keywords = "ExportResDatas sample test testing"), Category = "ExportResDatasTesting")
-		static float ExportResDatasSampleFunction(float Param);
 };

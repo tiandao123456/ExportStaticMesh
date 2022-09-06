@@ -33,16 +33,18 @@ UExportResDatasBPLibrary::UExportResDatasBPLibrary(const FObjectInitializer& Obj
 
 }
 
-FStaticMeshData::FStaticMeshData(TArray<float> Vertices, TArray<int32> Indices) : Indices(Indices), Vertices(Vertices)
+FStaticMeshData::FStaticMeshData(FString nameParameter, TArray<float>& Vertices, TArray<int32>& Indices, TArray<float>& modelMatrix):Vertices(Vertices),Indices(Indices)
 {
 	//VsFormat =
 	//	TEXT("POSITION,")
 	//	TEXT("NORMAL,")
 	//	TEXT("TEXCOORD0,")
 	//	TEXT("TEXCOORD1");
-
 	VerticesNum = Vertices.Num();
+	StaticMeshName = nameParameter;
+	ModelMatrix = modelMatrix;
 }
+
 
 void UExportResDatasBPLibrary::WriteFile(const FString& FileString, FString OutputPath, const FString& Filename)
 {
@@ -53,7 +55,7 @@ void UExportResDatasBPLibrary::WriteFile(const FString& FileString, FString Outp
 
 	FString Fullname = OutputPath + Filename + TEXT(".json");
 
-	if (!FFileHelper::SaveStringToFile(FileString, *Fullname, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM))
+	if (!FFileHelper::SaveStringToFile("\n" + FileString, *Fullname, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM, &IFileManager::Get(),EFileWrite::FILEWRITE_Append))
 	{
 		UE_LOG(LogResExporter, Display, TEXT("Failed to write to temp file: %s"), *Fullname);
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Failed to write to temp file: %s"), *Fullname));
@@ -129,7 +131,7 @@ void UExportResDatasBPLibrary::GetStaticMeshIndicesData(const UStaticMesh* Stati
 }
 
 //指向静态网格体对象的指针由蓝图给出
-void UExportResDatasBPLibrary::ExportStaticMesh(const UStaticMesh* StaticMesh, FString Path, const FString& Filename)
+void UExportResDatasBPLibrary::ExportStaticMesh(const UStaticMesh* StaticMesh, TArray<float>& modelMatrixParameter, FString Path, const FString& Filename)
 {
 	//获得顶点数据（包含顶点坐标、顶点法线坐标以及顶点的纹理坐标）
 	TArray<float> Vertices;
@@ -139,12 +141,13 @@ void UExportResDatasBPLibrary::ExportStaticMesh(const UStaticMesh* StaticMesh, F
 	TArray<int32> Indices;
 	GetStaticMeshIndicesData(StaticMesh, Indices);
 
-	FStaticMeshData Data(Vertices, Indices);
+	FString name = StaticMesh->GetName();
+	FStaticMeshData Data(name, Vertices, Indices, modelMatrixParameter);
 
 	ExportStructByJsonConverter(Data, Path, Filename);
 }
 
-void UExportResDatasBPLibrary::ExportCamera(const UObject* WorldContextObject, const UCameraComponent* CameraComponent, FString OutputPath, const FString& Filename)
+void UExportResDatasBPLibrary::ExportCamera(/*const UObject* WorldContextObject, */const UCameraComponent* CameraComponent, const FString& cameraName, FString OutputPath, const FString& Filename)
 {
 	//UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject);
 	FCameraInfo CamData;
@@ -160,28 +163,36 @@ void UExportResDatasBPLibrary::ExportCamera(const UObject* WorldContextObject, c
 	CamData.Fov = CameraComponent->FieldOfView;
 	//相机的纵横比
 	CamData.Aspect = CameraComponent->AspectRatio;
+	CamData.CameraName = cameraName;
 
 	ExportStructByJsonConverter(CamData, OutputPath, Filename);
 }
 
-void UExportResDatasBPLibrary::ExportActorWorldCoordinate(const AActor* StaticMeshActor, FString OutputPath, const FString& Filename)
+void UExportResDatasBPLibrary::ExportAllStaticMesh(const UStaticMesh* StaticMesh, const AActor* StaticMeshActor, FString OutputPath, const FString& Filename)
 {
-	FWorldCoordinateInfo WorldCoordinateInfo;
 	FTransform transform = StaticMeshActor->GetTransform();
-	WorldCoordinateInfo.Location = transform.GetLocation();
-	WorldCoordinateInfo.Rotation = transform.Rotator();
-	WorldCoordinateInfo.Scale = transform.GetScale3D();
 	FMatrix44d WorldMatrix = transform.ToMatrixWithScale();
-	WorldCoordinateInfo.MatrixCol1 = FVector4(WorldMatrix.M[0][0], WorldMatrix.M[1][0], WorldMatrix.M[2][0], WorldMatrix.M[3][0]);
-	WorldCoordinateInfo.MatrixCol2 = FVector4(WorldMatrix.M[0][1], WorldMatrix.M[1][1], WorldMatrix.M[2][1], WorldMatrix.M[3][1]);
-	WorldCoordinateInfo.MatrixCol3 = FVector4(WorldMatrix.M[0][2], WorldMatrix.M[1][2], WorldMatrix.M[2][2], WorldMatrix.M[3][2]);
-	WorldCoordinateInfo.MatrixCol4 = FVector4(WorldMatrix.M[0][3], WorldMatrix.M[1][3], WorldMatrix.M[2][3], WorldMatrix.M[3][3]);
+	
+	////场景中staticmeshactor的位置、旋转、缩放
+	//transform.GetLocation();
+	//transform.Rotator();
+	//transform.GetScale3D();
 
-	ExportStructByJsonConverter(WorldCoordinateInfo, OutputPath, Filename);
+	TArray<float> modelMatrix;
+	for (auto i = 0; i < 4; i++)
+	{
+		for (auto j = 0; j < 4; j++)
+		{
+			modelMatrix.Add(WorldMatrix.M[i][j]);
+		}
+	}
+	ExportStaticMesh(StaticMesh, modelMatrix, OutputPath, Filename);
 }
 
-
-float UExportResDatasBPLibrary::ExportResDatasSampleFunction(float Param)
+void UExportResDatasBPLibrary::ExportAllCamera(const AActor* cameraActor, const UCameraComponent* CameraComponent, FString OutputPath, const FString& Filename)
 {
-	return -1;
+	FString cameraName = cameraActor->GetName();
+	ExportCamera(CameraComponent,cameraName);
 }
+
+
