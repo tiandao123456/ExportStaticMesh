@@ -87,7 +87,21 @@ public:
 		FString CameraName;
 
 public:
-	FCameraInfo() : Location(FVector()), Target(FVector()), Rotator(FVector()), Fov(0.f), Aspect(0.f) {}
+	FCameraInfo() = default;
+};
+
+USTRUCT(BlueprintType)
+struct FSceneData
+{
+	GENERATED_USTRUCT_BODY()
+public:
+	UPROPERTY(BlueprintReadOnly, Category = "SceneData")
+		TArray<FStaticMeshData> StaticMeshData;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Scenedata")
+		TArray<FCameraInfo> cameraInfo;
+public:
+	FSceneData() = default;
 };
 
 UCLASS()
@@ -96,10 +110,6 @@ class UExportResDatasBPLibrary : public UBlueprintFunctionLibrary
 	GENERATED_UCLASS_BODY()
 
 public:
-	//导出静态网格体数据
-	UFUNCTION(BlueprintCallable, Category = "ResExport")
-		static void ExportStaticMesh(const UStaticMesh* StaticMesh, TArray<float>& modelMatrixParameter, FString OutputPath = TEXT(""), const FString& Filename = TEXT("StaticMeshMessage"));
-
 	//将网格体数据以json的形式写到文件中
 	UFUNCTION(BlueprintCallable, Category = "ResExport")
 		static void WriteFile(const FString& FileString, FString OutputPath, const FString& Filename);
@@ -112,20 +122,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ResExport")
 		static void GetStaticMeshIndicesData(const UStaticMesh* StaticMesh, TArray<int32>& Output);
 
-	//导出相机的数据
-	UFUNCTION(BlueprintCallable, Category = "ResExport", meta = (WorldContext = WorldContextObject))
-		static void ExportCamera(/*const UObject* WorldContextObject,*/ const UCameraComponent* CameraComponent, const FString& cameraName, FString OutputPath = TEXT(""), const FString& Filename = TEXT("SceneMessage"));
-
 	UFUNCTION(BlueprintCallable, Category = "ResExport")
-		static void ExportAllStaticMesh(const UStaticMesh* StaticMesh, const AActor* StaticMeshActor, FString OutputPath = TEXT(""), const FString& Filename = TEXT("SceneMessage"));
+		static void ExportScene(const UObject* WorldContextObject);
 
-	UFUNCTION(BlueprintCallable, Category = "ResExport")
-		static void ExportAllCamera(const AActor* cameraActor, const UCameraComponent* CameraComponent, FString OutputPath = TEXT(""), const FString& Filename = TEXT("SceneMessage"));
-
-	//UFUNCTION(BlueprintCallable, Category = "ResExport")
-	//	static void ExportDirectionLight();
-	//UPROPERTY(VisibleAnywhere, Category = "ResExport")
-	//	FString cameraName;
+	//在蓝图中不能声明static变量
 	//函数模板
 	template <typename TargetStruct>
 	static void ExportStructByJsonConverter(const TargetStruct& Target, FString OutputPath, const FString& Filename )

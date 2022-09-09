@@ -33,16 +33,14 @@ UExportResDatasBPLibrary::UExportResDatasBPLibrary(const FObjectInitializer& Obj
 
 }
 
-FStaticMeshData::FStaticMeshData(FString nameParameter, TArray<float>& Vertices, TArray<int32>& Indices, TArray<float>& modelMatrix):Vertices(Vertices),Indices(Indices)
+FStaticMeshData::FStaticMeshData(FString nameParameter, TArray<float>& Vertices, TArray<int32>& Indices, TArray<float>& modelMatrix):
+	Vertices(Vertices),Indices(Indices), VerticesNum(Vertices.Num()),StaticMeshName(nameParameter),ModelMatrix(modelMatrix)
 {
 	//VsFormat =
 	//	TEXT("POSITION,")
 	//	TEXT("NORMAL,")
 	//	TEXT("TEXCOORD0,")
 	//	TEXT("TEXCOORD1");
-	VerticesNum = Vertices.Num();
-	StaticMeshName = nameParameter;
-	ModelMatrix = modelMatrix;
 }
 
 
@@ -130,69 +128,79 @@ void UExportResDatasBPLibrary::GetStaticMeshIndicesData(const UStaticMesh* Stati
 	Output = Indices;
 }
 
-//指向静态网格体对象的指针由蓝图给出
-void UExportResDatasBPLibrary::ExportStaticMesh(const UStaticMesh* StaticMesh, TArray<float>& modelMatrixParameter, FString Path, const FString& Filename)
+void UExportResDatasBPLibrary::ExportScene(const UObject* WorldContextObject)
 {
-	//获得顶点数据（包含顶点坐标、顶点法线坐标以及顶点的纹理坐标）
-	TArray<float> Vertices;
-	GetStaticMeshVerticesData(StaticMesh, Vertices);
+	FSceneData sceneData;
 
-	//获得静态网格体的索引数据
-	TArray<int32> Indices;
-	GetStaticMeshIndicesData(StaticMesh, Indices);
+	TSubclassOf<AStaticMeshActor> staticMeshActorClass;
+	TSubclassOf<ACameraActor> cameraActorClass;
+	TArray<AActor*> OutActors;
 
-	FString name = StaticMesh->GetName();
-	FStaticMeshData Data(name, Vertices, Indices, modelMatrixParameter);
-
-	ExportStructByJsonConverter(Data, Path, Filename);
-}
-
-void UExportResDatasBPLibrary::ExportCamera(/*const UObject* WorldContextObject, */const UCameraComponent* CameraComponent, const FString& cameraName, FString OutputPath, const FString& Filename)
-{
-	//UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject);
-	FCameraInfo CamData;
-
-	FTransform Trans = CameraComponent->GetComponentToWorld();
-	//相机的位置
-	CamData.Location = Trans.GetLocation();
-	//相机的旋转
-	CamData.Rotator = Trans.GetRotation().Euler();
-	//相机的前向矢量
-	CamData.Target = CamData.Location + CameraComponent->GetForwardVector();
-	//相机的视野
-	CamData.Fov = CameraComponent->FieldOfView;
-	//相机的纵横比
-	CamData.Aspect = CameraComponent->AspectRatio;
-	CamData.CameraName = cameraName;
-
-	ExportStructByJsonConverter(CamData, OutputPath, Filename);
-}
-
-void UExportResDatasBPLibrary::ExportAllStaticMesh(const UStaticMesh* StaticMesh, const AActor* StaticMeshActor, FString OutputPath, const FString& Filename)
-{
-	FTransform transform = StaticMeshActor->GetTransform();
-	FMatrix44d WorldMatrix = transform.ToMatrixWithScale();
-	
-	////场景中staticmeshactor的位置、旋转、缩放
-	//transform.GetLocation();
-	//transform.Rotator();
-	//transform.GetScale3D();
-
-	TArray<float> modelMatrix;
-	for (auto i = 0; i < 4; i++)
+	//遍历场景中的所有staticMeshActor，对于staticMeshActor来说只有唯一一个model矩阵
+	UGameplayStatics::GetAllActorsOfClass(WorldContextObject, AStaticMeshActor::StaticClass(), OutActors);
+	for (auto num = 0; num < OutActors.Num(); num++)
 	{
-		for (auto j = 0; j < 4; j++)
-		{
-			modelMatrix.Add(WorldMatrix.M[i][j]);
-		}
-	}
-	ExportStaticMesh(StaticMesh, modelMatrix, OutputPath, Filename);
-}
+		AStaticMeshActor* staticMeshActor = Cast<AStaticMeshActor>(OutActors[num]);
+		FTransform transform = staticMeshActor->GetTransform();
+		FMatrix44d WorldMatrix = transform.ToMatrixWithScale();
+		////场景中staticMeshActor的位置、旋转、缩放
+		//transform.GetLocation();
+		//transform.Rotator();
+		//transform.GetScale3D();
 
-void UExportResDatasBPLibrary::ExportAllCamera(const AActor* cameraActor, const UCameraComponent* CameraComponent, FString OutputPath, const FString& Filename)
-{
-	FString cameraName = cameraActor->GetName();
-	ExportCamera(CameraComponent,cameraName);
+		//获取staticMeshActor的modelMatrix
+		TArray<float> modelMatrix;
+		for (auto i = 0; i < 4; i++)
+		{
+			for (auto j = 0; j < 4; j++)
+			{
+				modelMatrix.Add(WorldMatrix.M[i][j]);
+			}
+		}
+
+		UStaticMeshComponent* staticMeshComponent = staticMeshActor->GetStaticMeshComponent();
+		UStaticMesh* staticMesh = staticMeshComponent->GetStaticMesh();
+
+		//获得顶点数据（包含顶点坐标、顶点法线坐标以及顶点的纹理坐标）
+		TArray<float> Vertices;
+		GetStaticMeshVerticesData(staticMesh, Vertices);
+
+		//获得静态网格体的索引数据
+		TArray<int32> Indices;
+		GetStaticMeshIndicesData(staticMesh, Indices);
+
+		FString name = staticMesh->GetName();
+		FStaticMeshData Data(name, Vertices, Indices, modelMatrix);
+
+		sceneData.StaticMeshData.Add(Data);
+	}
+
+	OutActors.Reset();
+	UGameplayStatics::GetAllActorsOfClass(WorldContextObject, ACameraActor::StaticClass(), OutActors);
+	for (auto i = 0; i < OutActors.Num(); i++)
+	{
+		ACameraActor* cameraActor = Cast<ACameraActor>(OutActors[i]);
+		UCameraComponent* cameraComponent = cameraActor->GetCameraComponent();
+
+		FCameraInfo cameraData;
+		FTransform trans = cameraComponent->GetComponentToWorld();
+		//相机的位置
+		cameraData.Location = trans.GetLocation();
+		//相机的旋转
+		cameraData.Rotator = trans.GetRotation().Euler();
+		//相机的前向矢量
+		cameraData.Target = cameraData.Location + cameraComponent->GetForwardVector();
+		//相机的视野
+		cameraData.Fov = cameraComponent->FieldOfView;
+		//相机的纵横比
+		cameraData.Aspect = cameraComponent->AspectRatio;
+		cameraData.CameraName = cameraActor->GetName();
+
+		sceneData.cameraInfo.Add(cameraData);
+	}
+	FString OutputPath = TEXT("");
+	const FString& Filename = TEXT("SceneMessage");
+	ExportStructByJsonConverter(sceneData, OutputPath, Filename);
 }
 
 
