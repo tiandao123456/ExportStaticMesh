@@ -36,9 +36,9 @@ struct FStaticMeshData
 {
 	GENERATED_USTRUCT_BODY()
 
-	//顶点数量
-	UPROPERTY(BlueprintReadOnly, Category = "StaticMesh")
-		int32 VerticesNum;
+	////顶点数量
+	//UPROPERTY(BlueprintReadOnly, Category = "StaticMesh")
+	//	int32 VerticesNum;
 
 	//索引数组
 	UPROPERTY(BlueprintReadOnly, Category = "StaticMesh")

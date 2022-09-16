@@ -34,7 +34,7 @@ UExportResDatasBPLibrary::UExportResDatasBPLibrary(const FObjectInitializer& Obj
 }
 
 FStaticMeshData::FStaticMeshData(FString nameParameter, TArray<float>& Vertices, TArray<int32>& Indices, TArray<float>& modelMatrix):
-	Vertices(Vertices),Indices(Indices), VerticesNum(Vertices.Num()),StaticMeshName(nameParameter),ModelMatrix(modelMatrix)
+	Vertices(Vertices),Indices(Indices), StaticMeshName(nameParameter),ModelMatrix(modelMatrix)
 {
 	//VsFormat =
 	//	TEXT("POSITION,")
@@ -86,12 +86,12 @@ void UExportResDatasBPLibrary::GetStaticMeshVerticesData(const UStaticMesh* Stat
 				Vertices.Add(VertexBuffers->PositionVertexBuffer.VertexPosition(i).Y);
 				Vertices.Add(VertexBuffers->PositionVertexBuffer.VertexPosition(i).Z);
 
-				//Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.VertexTangentZ(i).X);
-				//Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.VertexTangentZ(i).Y);
-				//Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.VertexTangentZ(i).Z);
+				Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.VertexTangentZ(i).X);
+				Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.VertexTangentZ(i).Y);
+				Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.VertexTangentZ(i).Z);
 
-				//Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.GetVertexUV(i, 0).X);
-				//Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.GetVertexUV(i, 0).Y);
+				Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.GetVertexUV(i, 0).X);
+				Vertices.Add(VertexBuffers->StaticMeshVertexBuffer.GetVertexUV(i, 0).Y);
 			}
 		}
 		else
