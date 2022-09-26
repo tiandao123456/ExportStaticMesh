@@ -91,6 +91,23 @@ public:
 };
 
 USTRUCT(BlueprintType)
+struct FLightInfo
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+	UPROPERTY(BlueprintReadOnly, Category = "Light")
+		FVector Location;
+	UPROPERTY(BlueprintReadOnly, Category = "Light")
+		FVector Direction;
+	UPROPERTY(BlueprintReadOnly, Category = "Light")
+		float Intensity;
+
+public:
+	FLightInfo() = default;
+};
+
+USTRUCT(BlueprintType)
 struct FSceneData
 {
 	GENERATED_USTRUCT_BODY()
@@ -100,6 +117,9 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Scenedata")
 		TArray<FCameraInfo> cameraInfo;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Scenedata")
+		FLightInfo lightInfo;
 public:
 	FSceneData() = default;
 };

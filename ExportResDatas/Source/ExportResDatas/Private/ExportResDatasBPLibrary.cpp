@@ -198,6 +198,20 @@ void UExportResDatasBPLibrary::ExportScene(const UObject* WorldContextObject)
 
 		sceneData.cameraInfo.Add(cameraData);
 	}
+
+	UGameplayStatics::GetAllActorsOfClass(WorldContextObject, ADirectionalLight::StaticClass(), OutActors);
+	for (auto i = 0; i < OutActors.Num(); i++)
+	{
+		ADirectionalLight* directionLight = Cast<ADirectionalLight>(OutActors[i]);
+		ULightComponent* lightComponent = directionLight->GetLightComponent();
+		FLightInfo lightInfoData;
+		lightInfoData.Intensity = lightComponent->Intensity;
+		lightInfoData.Location = lightComponent->K2_GetComponentToWorld().GetLocation();
+		lightInfoData.Direction = lightComponent->K2_GetComponentToWorld().GetRotation().GetForwardVector();
+
+		sceneData.lightInfo = lightInfoData;
+	}
+
 	FString OutputPath = TEXT("");
 	const FString& Filename = TEXT("SceneMessage");
 	ExportStructByJsonConverter(sceneData, OutputPath, Filename);
