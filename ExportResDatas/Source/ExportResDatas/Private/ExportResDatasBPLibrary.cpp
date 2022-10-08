@@ -136,11 +136,16 @@ void UExportResDatasBPLibrary::ExportScene(const UObject* WorldContextObject)
 	TSubclassOf<ACameraActor> cameraActorClass;
 	TArray<AActor*> OutActors;
 
+	TArray<FString> staticMeshName;
+
 	//遍历场景中的所有staticMeshActor，对于staticMeshActor来说只有唯一一个model矩阵
 	UGameplayStatics::GetAllActorsOfClass(WorldContextObject, AStaticMeshActor::StaticClass(), OutActors);
 	for (auto num = 0; num < OutActors.Num(); num++)
 	{
 		AStaticMeshActor* staticMeshActor = Cast<AStaticMeshActor>(OutActors[num]);
+		UStaticMeshComponent* staticMeshComponent = staticMeshActor->GetStaticMeshComponent();
+		UStaticMesh* staticMesh = staticMeshComponent->GetStaticMesh();
+
 		FTransform transform = staticMeshActor->GetTransform();
 		FMatrix44d WorldMatrix = transform.ToMatrixWithScale();
 		////场景中staticMeshActor的位置、旋转、缩放
@@ -158,21 +163,32 @@ void UExportResDatasBPLibrary::ExportScene(const UObject* WorldContextObject)
 			}
 		}
 
-		UStaticMeshComponent* staticMeshComponent = staticMeshActor->GetStaticMeshComponent();
-		UStaticMesh* staticMesh = staticMeshComponent->GetStaticMesh();
-
-		//获得顶点数据（包含顶点坐标、顶点法线坐标以及顶点的纹理坐标）
+		bool flag = true;
 		TArray<float> Vertices;
-		GetStaticMeshVerticesData(staticMesh, Vertices);
-
-		//获得静态网格体的索引数据
 		TArray<int32> Indices;
-		GetStaticMeshIndicesData(staticMesh, Indices);
-
 		FString name = staticMesh->GetName();
-		FStaticMeshData Data(name, Vertices, Indices, modelMatrix);
 
-		sceneData.StaticMeshData.Add(Data);
+		for (auto i = 0; i < staticMeshName.Num(); i++)
+		{
+			if (name == staticMeshName[i])
+			{
+				FStaticMeshData Data(name, Vertices, Indices, modelMatrix);
+				sceneData.StaticMeshData.Add(Data);
+				flag = false;
+			}
+		}
+
+		if (flag)
+		{
+			//获得顶点数据（包含顶点坐标、顶点法线坐标以及顶点的纹理坐标）
+			GetStaticMeshVerticesData(staticMesh, Vertices);
+			//获得静态网格体的索引数据
+			GetStaticMeshIndicesData(staticMesh, Indices);
+			FStaticMeshData Data(name, Vertices, Indices, modelMatrix);
+
+			sceneData.StaticMeshData.Add(Data);
+			staticMeshName.Add(name);
+		}
 	}
 
 	OutActors.Reset();
